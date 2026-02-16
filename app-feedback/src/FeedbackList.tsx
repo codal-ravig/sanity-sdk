@@ -1,8 +1,11 @@
-import { Suspense } from "react"
+import { Suspense, useState } from "react"
 import { type DocumentHandle, useDocuments } from "@sanity/sdk-react"
 import { Stack, Button, Spinner } from "@sanity/ui"
 
 import { FeedbackPreview } from "./FeedbackPreview"
+import { StatusSelector } from "./StatusSelector"
+import { OnlyMine } from "./OnlyMine"
+import { FeedbackPreviewSelected } from "./FeedbackPreviewSelected"
 
 type FeedbackListProps = {
   selectedFeedback: DocumentHandle | null
@@ -13,12 +16,29 @@ export function FeedbackList({
   selectedFeedback,
   setSelectedFeedback,
 }: FeedbackListProps) {
+  const [userId, setUserId] = useState<string | null>(null)
+  const [status, setStatus] = useState("all")
+
   const { data, hasMore, loadMore } = useDocuments({
     documentType: "feedback",
+    filter: `
+      select(defined($userId) => assignee == $userId, true)
+      && select(
+        $status == "pending" => !defined(status) || status == "pending",
+        $status == "spam" => status == $status,
+        $status == "approved" => status == $status,
+        true
+      )
+    `,
+    params: { userId, status },
+    orderings: [{ field: "_createdAt", direction: "desc" }],
+    batchSize: 10,
   })
-  console.log(data)
+
   return (
     <Stack space={2} padding={5}>
+      <StatusSelector status={status} setStatus={setStatus} />
+      <OnlyMine userId={userId} setUserId={setUserId} />
       {data?.map((feedback) => {
         const isSelected = selectedFeedback?.documentId === feedback.documentId
 
@@ -30,7 +50,11 @@ export function FeedbackList({
             tone={isSelected ? "primary" : undefined}
           >
             <Suspense fallback={<Spinner />}>
-              <FeedbackPreview {...feedback} />
+              {isSelected ? (
+  <FeedbackPreviewSelected {...feedback} />
+) : (
+  <FeedbackPreview {...feedback} />
+)}
             </Suspense>
           </Button>
         )

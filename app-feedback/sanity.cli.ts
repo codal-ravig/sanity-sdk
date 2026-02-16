@@ -5,4 +5,7 @@ export default defineCliConfig({
     organizationId: 'obrzePuyM',
     entry: './src/App.tsx',
   },
+  deployment:{
+    appId: "kbc02umagkxxtkw9a0023v01"
+  }
 })
